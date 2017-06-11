@@ -1,11 +1,17 @@
 apt-mirror-updater: Automated Debian/Ubuntu mirror selection
 ============================================================
 
+.. image:: https://travis-ci.org/xolox/python-apt-mirror-updater.svg?branch=master
+   :target: https://travis-ci.org/xolox/python-apt-mirror-updater
+
+.. image:: https://coveralls.io/repos/xolox/python-apt-mirror-updater/badge.svg?branch=master
+   :target: https://coveralls.io/r/xolox/python-apt-mirror-updater?branch=master
+
 The `apt-mirror-updater` package automates robust apt-get_ mirror selection for
 Debian_ and Ubuntu_ by enabling discovery of available mirrors, ranking of
 available mirrors, automatic switching between mirrors and robust package list
-updating (see features_). The goal is to support Python 2.6, 2.7, 3.4 and PyPy
-but an automated test suite hasn't been developed yet (see status_).
+updating (see features_). It's currently tested on Python 2.6, 2.7, 3.4, 3.5,
+3.6 and PyPy (although test coverage is still rather low, see status_).
 
 .. contents::
    :local:
@@ -18,8 +24,8 @@ Features
 **Discovery of available mirrors**
  Debian_ and Ubuntu_ mirrors are discovered automatically by querying the
  `Debian mirror list <https://www.debian.org/mirror/list>`_ or the `Ubuntu
- mirror list <http://mirrors.ubuntu.com/mirrors.txt>`_ (the applicable mirror
- list is automatically selected based on the current platform).
+ mirror list <https://launchpad.net/ubuntu/+archivemirrors>`_ (the applicable
+ mirror list is automatically selected based on the current platform).
 
 **Ranking of available mirrors**
  Discovered mirrors are ranked by bandwidth (to pick the fastest mirror) and
@@ -47,8 +53,8 @@ Status
 On the one hand the `apt-mirror-updater` package was developed based on quite a
 few years of experience in using apt-get_ on Debian_ and Ubuntu_ systems and
 large scale automation of apt-get (working on 150+ remote systems). On the
-other hand the Python package itself is quite new at the time of writing: it
-was developed and published in March 2016. As such:
+other hand the Python package itself is relatively new: it was developed and
+published in March 2016. As such:
 
 .. warning:: Until `apt-mirror-updater` has been rigorously tested I consider
              it a proof of concept (beta software) so if it corrupts your
@@ -61,10 +67,9 @@ was developed and published in March 2016. As such:
              made before any changes are applied, so I don't see how this can
              result in irreversible corruption.
 
-My intention is to develop an automated test suite but at the moment I'm still
-a bit fuzzy on how to create representative tests for the error handling code
-paths (also, writing a decent test suite will require a significant chunk of
-time :-).
+I'm working on an automated test suite but at the moment I'm still a bit fuzzy
+on how to create representative tests for the error handling code paths (also,
+writing a decent test suite requires a significant chunk of time :-).
 
 Installation
 ------------
@@ -102,7 +107,10 @@ The command line interface is described below.
 
 **Usage:** `apt-mirror-updater [OPTIONS]`
 
-The apt-mirror-updater program automates robust apt-get mirror selection for Debian and Ubuntu by enabling discovery of available mirrors, ranking of available mirrors, automatic switching between mirrors and robust package list updating.
+The apt-mirror-updater program automates robust apt-get mirror selection for
+Debian and Ubuntu by enabling discovery of available mirrors, ranking of
+available mirrors, automatic switching between mirrors and robust package list
+updating.
 
 **Supported options:**
 
@@ -113,32 +121,29 @@ The apt-mirror-updater program automates robust apt-get mirror selection for Deb
 
    "``-r``, ``--remote-host=SSH_ALIAS``","Operate on a remote system instead of the local system. The ``SSH_ALIAS``
    argument gives the SSH alias of the remote host. It is assumed that the
-   remote account has root privileges or password-less sudo access.
-   "
+   remote account has root privileges or password-less sudo access."
    "``-f``, ``--find-current-mirror``","Determine the URL of the main mirror that is currently configured in
-   /etc/apt/sources.list.
-   "
-   "``-l``, ``--list-mirrors``","List available (ranked) mirrors on the terminal in a human readable format.
-   "
-   "``-c``, ``--change-mirror=MIRROR_URL``","Update /etc/apt/sources.list to use the given ``MIRROR_URL``.
-   "
+   /etc/apt/sources.list."
+   "``-l``, ``--list-mirrors``",List available (ranked) mirrors on the terminal in a human readable format.
+   "``-c``, ``--change-mirror=MIRROR_URL``",Update /etc/apt/sources.list to use the given ``MIRROR_URL``.
    "``-a``, ``--auto-change-mirror``","Discover available mirrors, rank the mirrors by connection speed and update
-   status and update /etc/apt/sources.list to use the best available mirror.
-   "
+   status and update /etc/apt/sources.list to use the best available mirror."
    "``-u``, ``--update``, ``--update-package-lists``","Update the package lists using ""apt-get update"", retrying on failure and
-   automatically switching to a different mirror when it looks like the
-   current mirror is being updated.
-   "
+   automatically switch to a different mirror when it looks like the current
+   mirror is being updated."
    "``-x``, ``--exclude=PATTERN``","Add a pattern to the mirror selection blacklist. ``PATTERN`` is expected to be
    a shell pattern (containing wild cards like ""?"" and ""\*"") that is matched
-   against the full URL of each mirror.
-   "
-   "``-v``, ``--verbose``","Make more noise.
-   "
-   "``-q``, ``--quiet``","Make less noise.
-   "
-   "``-h``, ``--help``","Show this message and exit.
-   "
+   against the full URL of each mirror."
+   "``-m``, ``--max=COUNT``","Don't query more than ``COUNT`` mirrors for their connection status
+   (defaults to 50). If you give the number 0 no limit will be applied.
+   
+   Because Ubuntu mirror discovery can report more than 300 mirrors it's
+   useful to limit the number of mirrors that are queried, otherwise the
+   ranking of mirrors will take a long time (because over 300 connections
+   need to be established)."
+   "``-v``, ``--verbose``",Increase logging verbosity (can be repeated).
+   "``-q``, ``--quiet``",Decrease logging verbosity (can be repeated).
+   "``-h``, ``--help``",Show this message and exit.
 
 .. [[[end]]]
 
@@ -189,7 +194,7 @@ License
 
 This software is licensed under the `MIT license`_.
 
-© 2016 Peter Odding.
+© 2017 Peter Odding.
 
 
 .. External references:
@@ -198,12 +203,12 @@ This software is licensed under the `MIT license`_.
 .. _Debian bug #110837: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=110837
 .. _Debian bug #624122: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=624122
 .. _Debian: https://en.wikipedia.org/wiki/Debian
-.. _documentation: https://apt-mirror-updater.readthedocs.org
+.. _documentation: https://apt-mirror-updater.readthedocs.io
 .. _GitHub: https://github.com/xolox/python-apt-mirror-updater
 .. _MIT license: http://en.wikipedia.org/wiki/MIT_License
 .. _per user site-packages directory: https://www.python.org/dev/peps/pep-0370/
 .. _peter@peterodding.com: peter@peterodding.com
 .. _PyPI: https://pypi.python.org/pypi/apt-mirror-updater
-.. _Read the Docs: https://apt-mirror-updater.readthedocs.org
+.. _Read the Docs: https://apt-mirror-updater.readthedocs.io
 .. _Ubuntu: https://en.wikipedia.org/wiki/Ubuntu_(operating_system)
 .. _virtual environments: http://docs.python-guide.org/en/latest/dev/virtualenvs/

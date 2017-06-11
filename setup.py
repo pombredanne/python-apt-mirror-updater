@@ -3,8 +3,8 @@
 """Setup script for the `apt-mirror-updater` package."""
 
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: March 10, 2016
-# URL: https://apt-mirror-updater.readthedocs.org
+# Last Change: June 8, 2017
+# URL: https://apt-mirror-updater.readthedocs.io
 
 # Standard library modules.
 import codecs
@@ -15,15 +15,15 @@ import re
 from setuptools import find_packages, setup
 
 
-def get_contents(filename):
+def get_contents(*args):
     """Get the contents of a file relative to the source distribution directory."""
-    with codecs.open(get_absolute_path(filename), 'r', 'utf-8') as handle:
+    with codecs.open(get_absolute_path(*args), 'r', 'UTF-8') as handle:
         return handle.read()
 
 
-def get_version(filename):
+def get_version(*args):
     """Extract the version number from a Python module."""
-    contents = get_contents(filename)
+    contents = get_contents(*args)
     metadata = dict(re.findall('__([a-z]+)__ = [\'"]([^\'"]+)', contents))
     return metadata['version']
 
@@ -48,10 +48,10 @@ def get_absolute_path(*args):
 
 setup(
     name='apt-mirror-updater',
-    version=get_version('apt_mirror_updater/__init__.py'),
+    version=get_version('apt_mirror_updater', '__init__.py'),
     description="Automated, robust apt-get mirror selection for Debian and Ubuntu",
     long_description=get_contents('README.rst'),
-    url='https://apt-mirror-updater.readthedocs.org',
+    url='https://apt-mirror-updater.readthedocs.io',
     author='Peter Odding',
     author_email='peter@peterodding.com',
     packages=find_packages(),
@@ -73,6 +73,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Software Development',

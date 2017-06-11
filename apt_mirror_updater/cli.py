@@ -1,8 +1,8 @@
 # Automated, robust apt-get mirror selection for Debian and Ubuntu.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: March 9, 2016
-# URL: https://apt-mirror-updater.readthedocs.org
+# Last Change: June 10, 2017
+# URL: https://apt-mirror-updater.readthedocs.io
 
 """
 Usage: apt-mirror-updater [OPTIONS]
@@ -41,8 +41,8 @@ Supported options:
   -u, --update, --update-package-lists
 
     Update the package lists using `apt-get update', retrying on failure and
-    automatically switching to a different mirror when it looks like the
-    current mirror is being updated.
+    automatically switch to a different mirror when it looks like the current
+    mirror is being updated.
 
   -x, --exclude=PATTERN
 
@@ -50,13 +50,23 @@ Supported options:
     a shell pattern (containing wild cards like `?' and `*') that is matched
     against the full URL of each mirror.
 
+  -m, --max=COUNT
+
+    Don't query more than COUNT mirrors for their connection status
+    (defaults to 50). If you give the number 0 no limit will be applied.
+
+    Because Ubuntu mirror discovery can report more than 300 mirrors it's
+    useful to limit the number of mirrors that are queried, otherwise the
+    ranking of mirrors will take a long time (because over 300 connections
+    need to be established).
+
   -v, --verbose
 
-    Make more noise.
+    Increase logging verbosity (can be repeated).
 
   -q, --quiet
 
-    Make less noise.
+    Decrease logging verbosity (can be repeated).
 
   -h, --help
 
@@ -72,11 +82,11 @@ import sys
 # External dependencies.
 import coloredlogs
 from executor.contexts import LocalContext, RemoteContext
-from humanfriendly import format_size, format_table
-from humanfriendly.terminal import connected_to_terminal, usage, warning
+from humanfriendly import format_size, format_table, format_timespan
+from humanfriendly.terminal import connected_to_terminal, output, usage, warning
 
 # Modules included in our package.
-from apt_mirror_updater import AptMirrorUpdater
+from apt_mirror_updater import MAX_MIRRORS, AptMirrorUpdater
 
 # Initialize a logger for this module.
 logger = logging.getLogger(__name__)
@@ -88,14 +98,16 @@ def main():
     coloredlogs.install(syslog=True)
     # Command line option defaults.
     context = LocalContext()
-    updater = AptMirrorUpdater(context)
+    updater = AptMirrorUpdater(context=context)
+    limit = MAX_MIRRORS
     actions = []
     # Parse the command line arguments.
     try:
-        options, arguments = getopt.getopt(sys.argv[1:], 'r:flc:aux:vqh', [
+        options, arguments = getopt.getopt(sys.argv[1:], 'r:flc:aux:m:vqh', [
             'remote-host=', 'find-current-mirror', 'list-mirrors',
             'change-mirror', 'auto-change-mirror', 'update',
-            'update-package-lists', 'exclude=', 'verbose', 'quiet', 'help',
+            'update-package-lists', 'exclude=', 'max=', 'verbose', 'quiet',
+            'help',
         ])
         for option, value in options:
             if option in ('-r', '--remote-host'):
@@ -103,7 +115,7 @@ def main():
                     msg = "The %s option should be the first option given on the command line!"
                     raise Exception(msg % option)
                 context = RemoteContext(value)
-                updater = AptMirrorUpdater(context)
+                updater = AptMirrorUpdater(context=context)
             elif option in ('-f', '--find-current-mirror'):
                 actions.append(functools.partial(report_current_mirror, updater))
             elif option in ('-l', '--list-mirrors'):
@@ -116,6 +128,8 @@ def main():
                 actions.append(updater.smart_update)
             elif option in ('-x', '--exclude'):
                 actions.insert(0, functools.partial(updater.ignore_mirror, value))
+            elif option in ('-m', '--max'):
+                limit = int(value)
             elif option in ('-v', '--verbose'):
                 coloredlogs.increase_verbosity()
             elif option in ('-q', '--quiet'):
@@ -128,6 +142,8 @@ def main():
         if not actions:
             usage(__doc__)
             return
+        # Propagate options to the Python API.
+        updater.max_mirrors = limit
     except Exception as e:
         warning("Error: Failed to parse command line arguments! (%s)" % e)
         sys.exit(1)
@@ -142,24 +158,36 @@ def main():
 
 def report_current_mirror(updater):
     """Print the URL of the currently configured ``apt-get`` mirror."""
-    print(updater.current_mirror)
+    output(updater.current_mirror)
 
 
 def report_available_mirrors(updater):
     """Print the available mirrors to the terminal (in a human friendly format)."""
     if connected_to_terminal():
-        print(format_table(
-            data=[
-                (i, candidate.mirror_url,
-                 "Yes" if candidate.is_available else "No",
-                 "Yes" if candidate.is_updating else "No" if candidate.is_available else "Unknown",
-                 format_size(candidate.bandwidth) if candidate.bandwidth else "Unknown")
-                for i, candidate in enumerate(updater.prioritized_mirrors, start=1)
-            ],
-            column_names=["Position", "Mirror URL", "Is available?", "Is being updated?", "Bandwidth (p/s)"],
-        ))
+        have_bandwidth = any(c.bandwidth for c in updater.prioritized_mirrors)
+        have_last_updated = any(c.last_updated is not None for c in updater.prioritized_mirrors)
+        column_names = ["Rank", "Mirror URL", "Available?", "Updating?"]
+        if have_last_updated:
+            column_names.append("Last updated")
+        if have_bandwidth:
+            column_names.append("Bandwidth")
+        data = []
+        for i, candidate in enumerate(updater.prioritized_mirrors, start=1):
+            row = [i, candidate.mirror_url,
+                   "Yes" if candidate.is_available else "No",
+                   "Yes" if candidate.is_updating else "No"]
+            if have_last_updated:
+                row.append("Up to date" if candidate.last_updated == 0 else (
+                    "%s behind" % format_timespan(candidate.last_updated)
+                    if candidate.last_updated else "Unknown"
+                ))
+            if have_bandwidth:
+                row.append("%s/s" % format_size(round(candidate.bandwidth, 2))
+                           if candidate.bandwidth else "Unknown")
+            data.append(row)
+        output(format_table(data, column_names=column_names))
     else:
-        print("\n".join(
+        output(u"\n".join(
             candidate.mirror_url for candidate in updater.prioritized_mirrors
             if candidate.is_available and not candidate.is_updating
         ))
